@@ -62,6 +62,7 @@ func (c *Configuration) Write() error {
 		return nil
 	}
 
+	klog.V(2).Infof("Write file %s", c.path)
 	err = os.Rename(tempname, c.path)
 	if err != nil {
 		return err
@@ -70,14 +71,10 @@ func (c *Configuration) Write() error {
 	return nil
 }
 
-func (c *Configuration) Run(ctx context.Context) {
+func (c *Configuration) Run(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, "cloudflared", "--no-autoupdate", "--config", defaultFilename)
-	go func() {
-		err := cmd.Run()
-		if err != nil {
-			klog.Errorf("Error running cloudflared: %w", err)
-		}
-	}()
+	klog.V(2).Infof("Running command %s", cmd.String())
+	return cmd.Run()
 }
 
 func NewFromFile(path string) (*Configuration, error) {

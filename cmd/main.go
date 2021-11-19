@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"os"
 	"path/filepath"
 
+	"github.com/aojea/kloudflarelb/pkg/cloudflared"
 	"github.com/aojea/kloudflarelb/pkg/config"
 	"github.com/aojea/kloudflarelb/pkg/loadbalancer"
 
@@ -11,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/klog/v2"
 )
 
 func main() {
@@ -27,6 +31,7 @@ func main() {
 	flag.StringVar(&c.TunnelID, "tunnelID", "", "cloudlfared tunnel <name/uuid>")
 	flag.StringVar(&c.CredentialsFile, "credentials-file", "", "cloudflare credentials file")
 
+	klog.InitFlags(nil)
 	flag.Parse()
 
 	// use the current context in kubeconfig
@@ -47,12 +52,21 @@ func main() {
 		clientset,
 		informer.Core().V1().Services(),
 	)
-	stopCh := make(chan struct{})
-	defer close(stopCh)
 
-	informer.Start(stopCh)
-	go lbController.Run(1, stopCh)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	// Wait forever
-	select {}
+	klog.Info("Starting informer")
+	informer.Start(ctx.Done())
+	go lbController.Run(1, ctx.Done())
+
+	cloudflare := cloudflared.NewFromConfig(c)
+	klog.Info("Starting cloudflared daemon")
+	err = cloudflare.Run(ctx)
+	if err != nil {
+		klog.Errorf("Error running cloudflared: %v", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
 }

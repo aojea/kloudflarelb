@@ -186,18 +186,19 @@ func (c *Controller) syncServices(key string) error {
 	// service is LoadBalancer check if it already has associated an ingress
 	// This can happen after the controller restarts
 	for _, i := range service.Status.LoadBalancer.Ingress {
-		klog.Infof("Update IP %s for service %s on namespace %s ", i.Hostname, name, namespace)
+		klog.Infof("Update load balancer Hostname %s for service %s on namespace %s ", i.Hostname, name, namespace)
 		c.addService(key, ingress{
 			hostname: i.Hostname,
 			// TODO: support multiport
 			service: net.JoinHostPort(service.Spec.ClusterIP, strconv.Itoa(int(service.Spec.Ports[0].Port))),
 		})
+		c.writeConfig()
 		return nil
 	}
 	// assign a tunnel URI to the service
 	lbHostname := service.Name + "-" + service.Namespace
 	if len(c.config.Domain) > 0 {
-
+		lbHostname = lbHostname + "-" + c.config.Domain
 	}
 	service.Status.LoadBalancer.Ingress = []v1.LoadBalancerIngress{{Hostname: lbHostname}}
 	_, err = c.client.CoreV1().Services(namespace).UpdateStatus(context.TODO(), service, metav1.UpdateOptions{})
@@ -210,6 +211,7 @@ func (c *Controller) syncServices(key string) error {
 		// TODO: support multiport
 		service: net.JoinHostPort(service.Spec.ClusterIP, strconv.Itoa(int(service.Spec.Ports[0].Port))),
 	})
+	c.writeConfig()
 	return nil
 }
 
