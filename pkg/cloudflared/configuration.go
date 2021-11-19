@@ -73,6 +73,8 @@ func (c *Configuration) Write() error {
 
 func (c *Configuration) Run(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, "cloudflared", "--no-autoupdate", "--config", defaultFilename)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	klog.V(2).Infof("Running command %s", cmd.String())
 	return cmd.Run()
 }
