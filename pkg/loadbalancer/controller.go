@@ -291,8 +291,10 @@ func (c *Controller) writeConfig() {
 	defer c.mu.Unlock()
 	config := cloudflared.NewFromConfig(c.config)
 
+	klog.V(2).Infof("New configuration %v", config)
 	// Copy from the original map to the target map
 	for _, ingress := range c.serviceTracker {
+		klog.V(2).Infof("Add ingress to configuration %v", ingress)
 		config.AddIngress(ingress.hostname, ingress.service)
 	}
 	config.Write()
