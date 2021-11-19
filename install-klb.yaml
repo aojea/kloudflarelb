@@ -72,6 +72,8 @@ spec:
       initContainers:
       containers:
       - name: kloudflarelb-cni
+        args:
+          - -v 2
         image: aojea/kloudflarelbd:stable
         env:
         - name: TUNNEL_CRED_FILE
