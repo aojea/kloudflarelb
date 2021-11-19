@@ -12,6 +12,7 @@ import (
 
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
@@ -28,7 +29,7 @@ func main() {
 
 	c := config.Config{}
 	flag.StringVar(&c.Domain, "domain", "", "domain associated to the tunnel")
-	flag.StringVar(&c.TunnelID, "tunnelID", "", "cloudlfared tunnel <name/uuid>")
+	flag.StringVar(&c.TunnelID, "tunnelID", "", "cloudflared tunnel <name/uuid>")
 	flag.StringVar(&c.CredentialsFile, "credentials-file", "", "cloudflare credentials file")
 
 	klog.InitFlags(nil)
@@ -37,7 +38,13 @@ func main() {
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		panic(err.Error())
+		klog.Infof("no out-cluster config")
+
+		// creates the in-cluster config
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	// create the clientset
