@@ -1,0 +1,106 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kloudflarelb
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kloudflarelb
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - list
+      - get
+      - watch
+      - patch
+      - update
+  - apiGroups:
+     - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kloudflarelb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kloudflarelb
+subjects:
+- kind: ServiceAccount
+  name: kloudflarelb
+  namespace: kloudflarelb
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kloudflarelb
+  namespace: kloudflarelb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kloudflarelb
+  namespace: kloudflarelb
+  labels:
+    app: kloudflarelb
+    k8s-app: kloudflarelb
+spec:
+  selector:
+    matchLabels:
+      app: kloudflarelb
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: kloudflarelb
+        k8s-app: kloudflarelb
+    spec:
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      serviceAccountName: kloudflarelb
+      initContainers:
+      containers:
+      - name: kloudflarelb-cni
+        image: aojea/kloudflarelbd:stable
+        env:
+        - name: TUNNEL_CRED_FILE
+          value: /var/lib/cloudflared/cert.pem
+        volumeMounts:
+        - name: credentials
+          mountPath: /var/lib/cloudflared
+          readOnly: false
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+          limits:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          privileged: false
+          capabilities:
+            add: ["NET_RAW", "NET_ADMIN"]
+      volumes:
+      - name: credentials
+        secret:
+          secretName: kloudflarelb
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kloudflarelb
+  namespace: kloudflarelb
+type: Opaque
+data:
+  cert.pem: ""
